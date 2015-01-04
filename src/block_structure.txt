@@ -1,0 +1,13 @@
+offset			size	name
+0				1		reserved ( first page for system info )
+1				1		logical page num for physical page 1
+......
+127				1		logical page num for physical page 127
+128				1		reserved
+129				1		page status for logical page at offset 1
+......
+255				1		page status for logical page at offset 127
+256				1		block flag
+258				2		logical block num for this physical block
+260				4		how much times sector was erased
+264				4		ftl driver magic, mark block if it was used by driver
