@@ -1,7 +1,6 @@
 #include "memmgt.h"
 #include <string.h>
 #include <stdint.h>
-#include <stdlib.h>
 
 static uint32_t alloc_count = 0;
 static uint32_t free_count = 0;
@@ -30,6 +29,8 @@ void *ftl_memcpy(void *dst, const void *src, size_t num)
 {
 	return memcpy(dst, src, num);
 }
+
+#include <stdio.h>
 
 void check_for_mem_leaks(void)
 {
