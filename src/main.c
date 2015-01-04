@@ -147,6 +147,11 @@ int main(void)
 			printf("f_close readback error  %d\n", result);
 			for (;;);
 		}
+		if (crc32_to != crc32_from)
+		{
+			printf("crc mismatch %.8X %.8X\n", crc32_to, crc32_from );
+			for (;;);
+		}
 #endif
 
 #if REMOVE_FILE
@@ -157,11 +162,6 @@ int main(void)
 			for (;;);
 		}
 #endif
-		if (crc32_to != crc32_from)
-		{
-			printf("crc mismatch %.8X %.8X\n", crc32_to, crc32_from );
-			for (;;);
-		}
 	}
 	
 	printf( "\nPure data wiritten = %ulMB\n", pure_data_wr/1024u/1024u );
