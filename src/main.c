@@ -47,12 +47,11 @@ int main(void)
 	srand( 0xBAADBEEF );
 #define WRITE_FILE_SIZE 512
 	uint64_t pure_data_wr = 0;
-	n = 666;
+	n = 256;
 	while (n--)
 	{
-		char file_name[32];
-		sprintf( file_name, "f%d.txt", 333);
-		fat_result = f_open(&fil, file_name, FA_CREATE_ALWAYS | FA_READ | FA_WRITE);
+		putchar('*');
+		fat_result = f_open(&fil, "test.txt", FA_CREATE_ALWAYS | FA_READ | FA_WRITE);
 		if (fat_result != FR_OK)
 		{
 			for (;;);
@@ -72,17 +71,12 @@ int main(void)
 			pure_data_wr += bw;
 		}
 		
-		fat_result = f_truncate(&fil);
-		if (fat_result != FR_OK)
-		{
-			for (;;);
-		}
 		fat_result = f_close(&fil);
 		if (fat_result != FR_OK)
 		{
 			for (;;);
 		}
-#if 0
+#if 1
 		fat_result = f_unlink("test.txt");
 		if (fat_result != FR_OK)
 		{
@@ -91,7 +85,7 @@ int main(void)
 #endif
 	}
 	
-	printf( "Pure data wiritten = %ulMB\n", pure_data_wr/1024u/1024u );
+	printf( "\nPure data wiritten = %ulMB\n", pure_data_wr/1024u/1024u );
 
 #ifndef NO_FTL
 	wl_stat();

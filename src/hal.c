@@ -72,7 +72,7 @@ ftl_status_t hal_read_id(uint8_t *buf)
 	{
 		flash_mem = malloc(FLASH_SIZE);
 
-		FILE *f = fopen("flash.mem", "rb");
+		FILE *f = fopen("flash.bin", "rb");
 		if (f == 0)
 		{
 			memset(flash_mem, 0xFF, FLASH_SIZE);
@@ -106,7 +106,7 @@ ftl_status_t hal_test_unit_removal(void)
 
 void hal_save_mem_dump(void)
 {
-	FILE *f = fopen("flash.mem", "wb+");
+	FILE *f = fopen("flash.bin", "wb+");
 	if (fwrite(flash_mem, 1, FLASH_SIZE, f) != FLASH_SIZE)
 	{
 		printf("fatal: flash mem write i/o error\n");

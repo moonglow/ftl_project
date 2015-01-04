@@ -32,18 +32,15 @@ DSTATUS disk_status(BYTE pdrv)
 DRESULT disk_read(BYTE pdrv, BYTE *buff, DWORD sector, UINT count)
 {
 	ftl_status_t result;
-	uint8_t buffer[_MAX_SS];
-
 	while (count--)
 	{
 #ifdef NO_FTL
-		memcpy( buffer, &flash_mem[sector*512], _MAX_SS );
+		memcpy(buff, &flash_mem[sector * 512], _MAX_SS);
 #else
-		result = ftl_read(sector, buffer);
+		result = ftl_read(sector, buff);
 		if (result != FTL_READ_PAGE_SUCCESS)
 			return RES_ERROR;
 #endif
-		memcpy(buff, buffer, _MAX_SS);
 		buff += _MAX_SS;
 	}
 	return RES_OK;
@@ -52,15 +49,12 @@ DRESULT disk_read(BYTE pdrv, BYTE *buff, DWORD sector, UINT count)
 DRESULT disk_write(BYTE pdrv, const BYTE *buff, DWORD sector, UINT count)
 {
 	ftl_status_t result;
-	uint8_t buffer[_MAX_SS];
-
 	while (count--)
 	{
-		memcpy(buffer, buff, _MAX_SS);
 #ifdef NO_FTL
-		memcpy(&flash_mem[sector * 512], buffer, _MAX_SS);
+		memcpy(&flash_mem[sector * 512], buff, _MAX_SS);
 #else
-		result = ftl_write(sector, buffer);
+		result = ftl_write(sector, buff);
 		if (result != FTL_WRITE_PAGE_SUCCESS)
 			return RES_ERROR;
 #endif
