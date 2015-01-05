@@ -918,6 +918,7 @@ ftl_status_t garbage_collect(uint16_t n_block, uint16_t *p_block_for_use, uint8_
 	uint32_t phy_addr;
 	uint16_t current_block;
 	uint8_t block_status;
+	uint8_t page_status;
 	uint32_t block_erase_count;
 	struct block_description_t *p_block_desc;
 	ftl_status_t result;
@@ -1022,8 +1023,6 @@ ftl_status_t garbage_collect(uint16_t n_block, uint16_t *p_block_for_use, uint8_
 	if (g_hal_hander.set_block_status(phy_addr, (uint8_t *)&n_block, sizeof(uint16_t)) != FTL_SET_BLOCK_STATUS_SUCCESS)
 		return FTL_GARBAGE_COLLECTION_FAILURE;
 
-	block_status = 0xA5;
-
 	for (i = 0; page_map_mem[256] > i; i++)
 	{
 		uint8_t * p_page_buffer;
@@ -1063,7 +1062,8 @@ ftl_status_t garbage_collect(uint16_t n_block, uint16_t *p_block_for_use, uint8_
 
 		phy_addr = (n_block_free << block_size_shift) + i + 129;
 		/* update page status ! */
-		if (g_hal_hander.set_block_status(phy_addr, (uint8_t *)&block_status, sizeof(uint8_t)) != FTL_SET_BLOCK_STATUS_SUCCESS)
+		page_status = 0xA5;
+		if (g_hal_hander.set_block_status(phy_addr, (uint8_t *)&page_status, sizeof(uint8_t)) != FTL_SET_BLOCK_STATUS_SUCCESS)
 			return FTL_GARBAGE_COLLECTION_FAILURE;
 	}
 
