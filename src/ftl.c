@@ -1335,18 +1335,20 @@ ftl_status_t  ftl_write( uint32_t sector, uint8_t *buf )
 	{
 		if (n_block_a != 0xFFFF)
 		{
-			if (garbage_collect(n_block, &block_tmp, &i) == FTL_GRABAGE_COLLECTION_SUCCESS)
-				goto complete_write;
-			return FTL_WRITE_PAGE_FAILURE;
+			if (garbage_collect(n_block, &block_tmp, &i) != FTL_GRABAGE_COLLECTION_SUCCESS)
+				return FTL_WRITE_PAGE_FAILURE;
 		}
-		if (ftl_get_phy_block(n_block, 1, p_page_buffer[256] & 3) != FTL_GET_PHY_BLOCK_SUCCESS)
-			return FTL_WRITE_PAGE_FAILURE;
-		p_block_desc = &g_ftl_struct.p_block_desc[n_block];
-		n_block_a = p_block_desc->n_block_a;
-		i = 1;
-		block_tmp = p_block_desc->n_block_a;
+		else
+		{
+			if (ftl_get_phy_block(n_block, 1, p_page_buffer[256] & 3) != FTL_GET_PHY_BLOCK_SUCCESS)
+				return FTL_WRITE_PAGE_FAILURE;
+			p_block_desc = &g_ftl_struct.p_block_desc[n_block];
+			n_block_a = p_block_desc->n_block_a;
+			i = 1;
+			block_tmp = p_block_desc->n_block_a;
+		}
 	}
-complete_write:
+
 	if ( g_hal_hander.set_block_status( (block_tmp << block_size_shift) + i, &n_page, sizeof( uint8_t ) ) != FTL_SET_BLOCK_STATUS_SUCCESS )
 		return FTL_WRITE_PAGE_FAILURE;
 	if (g_hal_hander.write_page((block_tmp << (block_size_shift - page_shift)) + i, buf) != FTL_WRITE_PAGE_SUCCESS)
