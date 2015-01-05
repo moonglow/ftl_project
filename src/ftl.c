@@ -1153,18 +1153,17 @@ ftl_status_t garbage_collect(uint16_t n_block, uint16_t *p_block_for_use, uint8_
 
 ftl_status_t do_defrag(int tmp_scan_point)
 {
-	int block_delta;
-	int tmp;
+	char f_grb_col;
 
-	block_delta = g_ftl_struct.p_block_desc[tmp_scan_point].n_block_b - 0xFFFF;
-	if (block_delta)
-		block_delta = 1;
+	if (g_ftl_struct.p_block_desc[tmp_scan_point].n_block_b == 0xFFFF)
+		f_grb_col = 0;
+	else
+		f_grb_col = 1;
 
 	if (g_ftl_struct.p_block_desc[tmp_scan_point].n_block_a == 0xFFFF)
-		tmp = 0;
-	else
-		tmp = block_delta & 1;
-	if (tmp)
+		f_grb_col = 0;
+	
+	if (f_grb_col)
 	{
 		if (garbage_collect(tmp_scan_point, 0, 0) == FTL_GRABAGE_COLLECTION_SUCCESS)
 			return FTL_DEFRAG_SUCCESS;
@@ -1176,25 +1175,25 @@ ftl_status_t do_defrag(int tmp_scan_point)
 
 ftl_status_t ftl_defrag(void)
 {
-	int n_blocks;
-	int tmp_scan;
+	uint16_t start_block;
+	uint16_t next_block;
 	ftl_status_t result;
-	int next_scan_point;
 
-	n_blocks = g_ftl_struct.n_blocks;
-	tmp_scan = scan_point;
+	start_block = scan_point;
 	do
 	{
 		result = do_defrag(scan_point);
 		if (result != FTL_DEFRAG_SUCCESS)
 			break;
-		next_scan_point = (scan_point + 1);
-		++scan_point;
+		next_block = ++scan_point;
 		if (g_ftl_struct.n_free_blocks > 3u)
 			break;
-		if (next_scan_point == n_blocks)
+		/* last block ?*/
+		if (next_block == g_ftl_struct.n_blocks)
 			scan_point = 0;
-	} while (scan_point != tmp_scan);
+	} 
+	/* overflow control */
+	while (scan_point != start_block);
 	return result;
 }
 
@@ -1266,16 +1265,15 @@ ftl_status_t  ftl_write( uint32_t sector, uint8_t *buf )
 	page_shift = g_ftl_struct.p_chip_desc->page_shift;
 	n_block = sector / (n_pages_per_block - 1);
 	n_page = sector - (n_pages_per_block - 1) * n_block;
-	/* mark page as used */
+	/* mark page as used, good pattern 0b1010 0101 */
 	page_status = 0xA5u;
 
 	if (sector >= ((uint32_t)(n_pages_per_block - 1) * g_ftl_struct.n_blocks) )
 		return FTL_WRITE_PAGE_FAILURE;
 
-	if (g_ftl_struct.n_free_blocks < 3 )
+	if (g_ftl_struct.n_free_blocks <= 2 )
 	{
-		char flag_1;
-		int block_delta;
+		char f_defrag;
 
 		p_block_desc = &g_ftl_struct.p_block_desc[n_block];
 		/* we have filled hi part ? */
@@ -1295,14 +1293,13 @@ ftl_status_t  ftl_write( uint32_t sector, uint8_t *buf )
 				++i;
 			}
 		}
-		/* just check if block_tmp is 0xFFFF ? */
-		block_delta = block_tmp - 0xFFFF;
-		if ( i == n_pages_per_block)
-			flag_1 = ( block_delta <= 0) | 1;
-		else
-			flag_1 = block_delta <= 0;
 
-		if (flag_1 && ftl_defrag() != FTL_DEFRAG_SUCCESS)
+		if (i == n_pages_per_block)
+			f_defrag = 1;
+		else
+			f_defrag = (block_tmp == 0xFFFF);
+
+		if (f_defrag && ftl_defrag() != FTL_DEFRAG_SUCCESS)
 			return FTL_WRITE_PAGE_FAILURE;
 	}
 		
