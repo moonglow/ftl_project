@@ -666,11 +666,11 @@ ftl_status_t ftl_init(void)
 	if ( g_ftl_struct.p_page_buffer == 0 )
 		return FTL_INIT_FAILURE;
 
-	g_ftl_struct.p_block_llist = ftl_malloc(32);
+	g_ftl_struct.p_block_llist = ftl_malloc(sizeof(struct block_llist_entry_t *) * 8);
 	if (g_ftl_struct.p_block_llist == 0)
 		return FTL_INIT_FAILURE;
 
-	ftl_memset(g_ftl_struct.p_block_llist, 0x00, 32);
+	ftl_memset(g_ftl_struct.p_block_llist, 0x00, sizeof(struct block_llist_entry_t *) * 8);
 
 	if (hal_test_unit_wr_protect() == FTL_UNIT_WR_PROTECT)
 	{
