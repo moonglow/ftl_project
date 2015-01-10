@@ -15,7 +15,6 @@ OFFSET 260 DATA[4] ERASE_COUNT
 OFFSET 264 DATA[4] FTL_BLOCK_MAGIC
 */
 
-#pragma pack(push,1)
 dataflash_dev_t chip_ids[] = 
 {
 	{
@@ -41,9 +40,9 @@ dataflash_dev_t chip_ids[] =
 	},
 	{
 		0x471F,
-		(64*1024u),
-		(4*1024*1024u),
-		512,
+		0x10000,
+		0x400000,
+		0x200,
 		"Atmel AT25DF321",
 	},
 	{
@@ -72,6 +71,7 @@ dataflash_dev_t chip_ids[] =
 	}
 };
 
+/* 24 bytes */
 struct hal_hander_t
 {
 	ftl_status_t (*read_page)(uint32_t addr, uint8_t *buf );
@@ -83,33 +83,29 @@ struct hal_hander_t
 }
 g_hal_hander = { 0 };
 
-
+/* 16 bytes */
 struct chip_desc_t
 {
 	uint16_t dev_id;
 	uint8_t block_size_shift;
 	uint8_t page_shift;
 	uint8_t n_pages_per_block;
-	uint8_t anonymous_3;
 	uint16_t page_size;
 	uint32_t block_size;
 	uint32_t chip_size;
 }
 chip_desc = { 0 };
 
-
+/* 8 bytes */
 struct block_llist_entry_t
 {
 	uint16_t n_block;
-	uint16_t padd;
 	struct block_llist_entry_t *p_next;
 };
 
-struct block_array_llist_t
-{
-	struct block_llist_entry_t *llist_free_blocks[8];
-};
-
+/* packed structures: */
+#pragma pack(push,1)
+/* 29 bytes */
 struct ftl_struct_t
 {
 	struct chip_desc_t *p_chip_desc;
@@ -122,13 +118,13 @@ struct ftl_struct_t
 	uint16_t n_free_blocks;
 	uint16_t n_bad_blocks;
 	struct block_description_t *p_block_desc;
-	struct block_array_llist_t *p_block_llist;
+	struct block_llist_entry_t **p_free_block_llist;
 	uint8_t *p_page_buffer;
 	uint8_t f_is_init;
 }
 g_ftl_struct = { 0 };
 
-
+/* 6 bytes */
 struct block_description_t
 {
 	uint8_t block_status;
@@ -138,13 +134,15 @@ struct block_description_t
 	uint16_t n_block_a; /* block for pages from 128-254 */
 };
 
-
+/* 130 bytes */
 struct cache_register_t
 {
 	uint8_t		phy_page[128];
 	uint16_t	n_block;
-};
+}
+ftl_cache[4] = { 0xFF };
 
+/* page map, just to information */
 struct page_map_t
 {
 	struct
@@ -155,11 +153,9 @@ struct page_map_t
 	map[128];
 	uint8_t n_pages;
 };
-
-struct cache_register_t ftl_cache[4] = { 0xFF };
+#pragma pack(pop)
 
 uint16_t scan_point = 0;
-#pragma pack(pop)
 
 static ftl_status_t hal_init(void)
 {
@@ -368,14 +364,14 @@ ftl_status_t add_free_block( uint32_t nblock, uint32_t block_erase_count )
 	p_block_entry->p_next = p_block_entry;
 	if (block_llist_index >= 3)
 		block_llist_index = 3;
-	p_head = g_ftl_struct.p_block_llist->llist_free_blocks[block_llist_index];
+	p_head = g_ftl_struct.p_free_block_llist[block_llist_index];
 	p_block_entry->n_block = nblock;
 	if (p_head)
 	{
 		p_block_entry->p_next = p_head->p_next;
 		p_head->p_next = p_block_entry;
 	}
-	g_ftl_struct.p_block_llist->llist_free_blocks[block_llist_index] = p_block_entry;
+	g_ftl_struct.p_free_block_llist[block_llist_index] = p_block_entry;
 	return FTL_ADD_FREE_BLOCK_SUCCESS;
 }
 
@@ -385,12 +381,12 @@ ftl_status_t get_free_block( uint16_t *p_n_block )
 	struct block_llist_entry_t *p_head;
 	struct block_llist_entry_t *p_next;
 
-	if (g_ftl_struct.p_block_llist)
+	if (g_ftl_struct.p_free_block_llist)
 	{
 		i = 0;
 		while (1)
 		{
-			p_head = g_ftl_struct.p_block_llist->llist_free_blocks[i];
+			p_head = g_ftl_struct.p_free_block_llist[i];
 			if (p_head)
 				break;
 			if ( ++i == 4)
@@ -401,7 +397,7 @@ ftl_status_t get_free_block( uint16_t *p_n_block )
 		if ( p_next == p_head )
 		{
 			ftl_free( p_next );
-			g_ftl_struct.p_block_llist->llist_free_blocks[i] = 0;
+			g_ftl_struct.p_free_block_llist[i] = 0;
 		}
 		else
 		{
@@ -573,7 +569,7 @@ ftl_status_t ftl_deinit( void )
 	i = 0;
 	do
 	{
-		p_block_llist_entry = g_ftl_struct.p_block_llist->llist_free_blocks[i];
+		p_block_llist_entry = g_ftl_struct.p_free_block_llist[i];
 		if (p_block_llist_entry)
 		{
 			while (1)
@@ -586,12 +582,12 @@ ftl_status_t ftl_deinit( void )
 				p_block_llist_entry->p_next = p_next;
 			}
 			ftl_free( p_block_llist_entry );
-			g_ftl_struct.p_block_llist->llist_free_blocks[i] = 0;
+			g_ftl_struct.p_free_block_llist[i] = 0;
 		}
 		++i;
 	} 
 	while (i != 4);
-	ftl_free(g_ftl_struct.p_block_llist);
+	ftl_free(g_ftl_struct.p_free_block_llist);
 
 	chip_desc.dev_id = 0;
 	chip_desc.page_size = 0;
@@ -610,7 +606,7 @@ ftl_status_t ftl_deinit( void )
 	g_ftl_struct.n_good_blocks = 0;
 	g_ftl_struct.p_block_desc = 0;
 	g_ftl_struct.p_page_buffer = 0;
-	g_ftl_struct.p_block_llist = 0;
+	g_ftl_struct.p_free_block_llist = 0;
 	g_ftl_struct.f_is_init = 0;
 
 	return FTL_SUCCESS;
@@ -666,11 +662,11 @@ ftl_status_t ftl_init(void)
 	if ( g_ftl_struct.p_page_buffer == 0 )
 		return FTL_INIT_FAILURE;
 
-	g_ftl_struct.p_block_llist = ftl_malloc(sizeof(struct block_llist_entry_t *) * 8);
-	if (g_ftl_struct.p_block_llist == 0)
+	g_ftl_struct.p_free_block_llist = ftl_malloc(sizeof(struct block_llist_entry_t *) * 8);
+	if (g_ftl_struct.p_free_block_llist == 0)
 		return FTL_INIT_FAILURE;
 
-	ftl_memset(g_ftl_struct.p_block_llist, 0x00, sizeof(struct block_llist_entry_t *) * 8);
+	ftl_memset(g_ftl_struct.p_free_block_llist, 0x00, sizeof(struct block_llist_entry_t *) * 8);
 
 	if (hal_test_unit_wr_protect() == FTL_UNIT_WR_PROTECT)
 	{
